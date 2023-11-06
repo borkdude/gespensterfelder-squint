@@ -1,7 +1,5 @@
 (ns gespensterfelder
-  (:require [applied-science.js-interop :as j]
-            [kitchen-async.promise :as p]
-            ["three-full" :as three]
+  (:require ["three-full" :as three]
             ["easing" :as easing]
             ["bezier-easing" :as BezierEasing]
             ["dat.gui" :as dat]))
@@ -10,11 +8,11 @@
 ;; controls
 
 (defonce params
-  (j/obj :magnitude 0.1
-         :x-scale 1.0
-         :y-scale 0.5
-         :sin-x-scale 0.0
-         :cos-y-scale 1.0))
+  {:magnitude 0.1
+   :x-scale 1.0
+   :y-scale 0.5
+   :sin-x-scale 0.0
+   :cos-y-scale 1.0})
 
 (defonce gui
   (doto (dat/GUI.)
@@ -31,33 +29,43 @@
   (doto (three/WebGLRenderer. (clj->js :antialias true))
     (.setPixelRatio (.-devicePixelRatio js/window))
     (.setSize (.-innerWidth js/window) (.-innerHeight js/window))
-    (j/assoc! :physicallyCorrectLights true
-              :antialias true
-              :gammaInput true
-              :gammaOutput true
-              :toneMapping three/ReinhardToneMapping
-              :toneMappingExposure (Math/pow 1.4 5.0))
-    (-> (j/get :domElement) (->> (.appendChild (.-body js/document))))))
+    #_:clj-kondo/ignore
+    (assoc! :physicallyCorrectLights true
+            :antialias true
+            :gammaInput true
+            :gammaOutput true
+            :toneMapping three/ReinhardToneMapping
+            :toneMappingExposure (Math/pow 1.4 5.0))
+    (-> (get :domElement) (->> (.appendChild (.-body js/document))))))
 
 (defonce scene
   (three/Scene.))
 
+
+(defn update! [obj k f & args]
+  (assoc! obj k (apply f (unchecked-get obj k) args)))
+
+(defn call! [obj k & args]
+  (let [f (unchecked-get obj k)]
+    (apply f args)
+    obj))
+
 (def camera
   (doto (three/PerspectiveCamera. 75 (/ (.-innerWidth js/window) (.-innerHeight js/window)) 0.1 1000)
-    (j/update! :position j/call :set 0 0 70)
+    (update! :position call! :set 0 0 70)
     (.lookAt (three/Vector3.))))
 
 ;; effects composer for after effects
 (def composer 
-  (let [w (j/get js/window :innerWidth)
-        h (j/get js/window :innerHeight)]
+  (let [w (get js/window :innerWidth)
+        h (get js/window :innerHeight)]
     (doto (three/EffectComposer. renderer)
       (.addPass (three/RenderPass. scene camera))
       (.addPass (three/UnrealBloomPass. (three/Vector2. w h) ; viewport resolution
                                         0.3   ; strength
                                         0.2   ; radius
                                         0.8)) ; threshold
-      (.addPass (j/assoc! (three/FilmPass. 0.25  ; noise intensity
+      (.addPass (assoc! (three/FilmPass. 0.25  ; noise intensity
                                            0.26  ; scanline intensity
                                            648   ; scanline count
                                            false); grayscale
@@ -80,7 +88,7 @@
   (map (BezierEasing. 0.74 -0.01 0.21 0.99)
        (range 0 1 (/ 1.0 76))))
 
-(def linear (concat (easing 76 "linear" (j/obj :endToEnd true))))
+(def linear (concat (easing 76 "linear" {:endToEnd true})))
 
 ;; used to calculate offsets for deformed sphere
 (def sphere-vertices
@@ -102,11 +110,11 @@
       (when-let [m (first (.-children @mesh))]
         (doseq [[v sv] (map vector (.-vertices (.-geometry m)) sphere-vertices)]
           (.copy v sv)
-          (.addScaledVector v sv (* (j/get params :magnitude)
-                                    (fix-zero (* (j/get params :x-scale) (.-x sv)))
-                                    (fix-zero (* (j/get params :y-scale) (.-y sv)))
-                                    (fix-zero (* (j/get params :sin-x-scale) (Math/sin (.-x sv))))
-                                    (fix-zero (* (j/get params :cos-y-scale) (Math/cos (.-y sv))))
+          (.addScaledVector v sv (* (get params :magnitude)
+                                    (fix-zero (* (get params :x-scale) (.-x sv)))
+                                    (fix-zero (* (get params :y-scale) (.-y sv)))
+                                    (fix-zero (* (get params :sin-x-scale) (Math/sin (.-x sv))))
+                                    (fix-zero (* (get params :cos-y-scale) (Math/cos (.-y sv))))
                                     (nth linear @current-frame))))
         (let [dists (mapv #(.distanceTo origin %) (.-vertices (.-geometry m)))
               min-dist (apply min dists)
@@ -116,9 +124,9 @@
                      (+ 0.4 (* 0.5 (max (min 1.0 (/ (- (.distanceTo origin v) min-dist) max-dist)) 0)))
                      0.8
                      0.2)))
-        (j/assoc-in! m [:rotation :y] (* 1.5 Math/PI (nth bezier @current-frame)))
-        (j/assoc-in! m [:geometry :verticesNeedUpdate] true)
-        (j/assoc-in! m [:geometry :colorsNeedUpdate] true))))
+        (-> m (assoc-in! [:rotation :y] (* 1.5 Math/PI (nth bezier @current-frame)))
+              (assoc-in! [:geometry :verticesNeedUpdate] true)
+              (assoc-in! [:geometry :colorsNeedUpdate] true)))))
   (.render composer (nth bezier @current-frame))) ;; render from the effects composer
 
 (defn animate []
@@ -129,27 +137,27 @@
 (defonce assets (atom {}))
 
 (defn load-texture [file]  
-  (p/promise [resolve reject]
-             (.load (three/TextureLoader.)
-                    file
-                    (fn [texture]
-                      (j/assoc! texture
-                                :wrapS three/RepeatWrapping
-                                :wrapT three/RepeatWrapping)
-                      (swap! assets assoc file texture)
-                      (resolve)))))
+  (js/Promise. (fn [resolve _reject]
+                 (.load (three/TextureLoader.)
+                        file
+                        (fn [texture]
+                          #_:clj-kondo/ignore
+                          (assoc! texture
+                                    :wrapS three/RepeatWrapping
+                                    :wrapT three/RepeatWrapping)
+                          (swap! assets assoc file texture)
+                          (resolve))))))
 
-(defn init []
-  (p/do
-    (load-texture "wisp.png")    
-    (set-mesh
-     (doto (three/Group.)
-       (.add (three/Points. (let [geo (three/SphereGeometry. 11 64 64)]
-                              (j/assoc! geo :colors (clj->js (repeatedly (count (.-vertices geo)) #(three/Color. 0xffffff)))))
-                            (three/PointsMaterial. (j/obj :vertexColors three/VertexColors
-                                                          :size 0.7
-                                                          :transparent true
-                                                          :alphaTest 0.5
-                                                          :map (@assets "wisp.png")
-                                                          :blending three/AdditiveBlending)))))))
+(defn ^:async init []
+  (js-await (load-texture "wisp.png"))
+  (set-mesh
+   (doto (three/Group.)
+     (.add (three/Points. (let [geo (three/SphereGeometry. 11 64 64)]
+                            (assoc! geo :colors (clj->js (repeatedly (count (.-vertices geo)) #(three/Color. 0xffffff)))))
+                          (three/PointsMaterial. {:vertexColors three/VertexColors
+                                                  :size 0.7
+                                                  :transparent true
+                                                  :alphaTest 0.5
+                                                  :map (@assets "wisp.png")
+                                                  :blending three/AdditiveBlending})))))
   (animate))
