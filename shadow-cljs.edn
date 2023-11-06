@@ -1,8 +1,5 @@
 ;; shadow-cljs configuration
-{:source-paths ["src/dev"
-                "src/"]
-
- :deps         true
+{:deps         true
 
  :builds
  {:frontend
