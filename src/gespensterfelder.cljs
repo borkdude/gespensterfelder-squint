@@ -2,19 +2,22 @@
   (:require ["three-full" :as three]
             ["easing" :as easing]
             ["bezier-easing" :as BezierEasing]
-            ["dat.gui" :as dat]))
+            ["dat.gui" :as dat]
+            ["squint-cljs/core.js" :as squint]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; controls
 
-(defonce params
+(def params
   {:magnitude 0.1
    :x-scale 1.0
    :y-scale 0.5
    :sin-x-scale 0.0
    :cos-y-scale 1.0})
 
-(defonce gui
+(js/console.log params)
+
+(def gui
   (doto (dat/GUI.)
     (.add params "magnitude" 0.0 0.5)
     (.add params "x-scale" 0.0 2.0)
@@ -25,7 +28,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; basic three.js setup
 
-(defonce renderer
+(def renderer
   (doto (three/WebGLRenderer. (clj->js :antialias true))
     (.setPixelRatio (.-devicePixelRatio js/window))
     (.setSize (.-innerWidth js/window) (.-innerHeight js/window))
@@ -38,21 +41,13 @@
             :toneMappingExposure (Math/pow 1.4 5.0))
     (-> (get :domElement) (->> (.appendChild (.-body js/document))))))
 
-(defonce scene
+(def scene
   (three/Scene.))
-
-
-(defn update! [obj k f & args]
-  (assoc! obj k (apply f (unchecked-get obj k) args)))
-
-(defn call! [obj k & args]
-  (let [f (unchecked-get obj k)]
-    (apply f args)
-    obj))
 
 (def camera
   (doto (three/PerspectiveCamera. 75 (/ (.-innerWidth js/window) (.-innerHeight js/window)) 0.1 1000)
-    (update! :position call! :set 0 0 70)
+    (-> :position ((fn [pos]
+                     (.set pos 0 0 70))))
     (.lookAt (three/Vector3.))))
 
 ;; effects composer for after effects
@@ -72,7 +67,7 @@
                           :renderToScreen true)))))
 
 ;; so we can update the mesh while livecoding
-(defonce mesh (atom nil))
+(def mesh (atom nil))
 
 (defn set-mesh [m]
   (when (not (nil? @mesh))
@@ -99,6 +94,9 @@
 (defn fix-zero [n]
   (if (= 0 n) 1 n))
 
+(defn mod [x y]
+  (js* "(~{} % ~{} + ~{}) % ~{}" x y y y))
+
 (defn render []
   (let [fps 24.0
         num-frames 76
@@ -124,9 +122,9 @@
                      (+ 0.4 (* 0.5 (max (min 1.0 (/ (- (.distanceTo origin v) min-dist) max-dist)) 0)))
                      0.8
                      0.2)))
-        (-> m (assoc-in! [:rotation :y] (* 1.5 Math/PI (nth bezier @current-frame)))
-              (assoc-in! [:geometry :verticesNeedUpdate] true)
-              (assoc-in! [:geometry :colorsNeedUpdate] true)))))
+        (-> m (squint/assoc-in! [:rotation :y] (* 1.5 Math/PI (nth bezier @current-frame)))
+              (squint/assoc-in! [:geometry :verticesNeedUpdate] true)
+              (squint/assoc-in! [:geometry :colorsNeedUpdate] true)))))
   (.render composer (nth bezier @current-frame))) ;; render from the effects composer
 
 (defn animate []
@@ -134,7 +132,7 @@
   (render))
 
 ;; where we store any assets loaded with e.g. load-texture
-(defonce assets (atom {}))
+(def assets (atom {}))
 
 (defn load-texture [file]  
   (js/Promise. (fn [resolve _reject]
@@ -150,6 +148,7 @@
 
 (defn ^:async init []
   (js-await (load-texture "wisp.png"))
+  #_(prn @assets)
   (set-mesh
    (doto (three/Group.)
      (.add (three/Points. (let [geo (three/SphereGeometry. 11 64 64)]
@@ -158,6 +157,8 @@
                                                   :size 0.7
                                                   :transparent true
                                                   :alphaTest 0.5
-                                                  :map (@assets "wisp.png")
+                                                  :map (get @assets "wisp.png")
                                                   :blending three/AdditiveBlending})))))
   (animate))
+
+(init)
