@@ -1,4 +1,5 @@
 (ns gespensterfelder
+  {:clj-kondo/config '{:linters {:unresolved-symbol {:exclude [js-await]}}}}
   (:require ["three-full" :as three]
             ["easing" :as easing]
             ["bezier-easing" :as BezierEasing]
@@ -32,14 +33,13 @@
   (doto (three/WebGLRenderer. (clj->js {:antialias true}))
     (.setPixelRatio (.-devicePixelRatio js/window))
     (.setSize (.-innerWidth js/window) (.-innerHeight js/window))
-    #_:clj-kondo/ignore
-    (assoc! :physicallyCorrectLights true
-            :antialias true
-            :gammaInput true
-            :gammaOutput true
-            :toneMapping three/ReinhardToneMapping
-            :toneMappingExposure (Math/pow 1.4 5.0))
-    (-> (get :domElement) (->> (.appendChild (.-body js/document))))))
+    (-> (assoc! :physicallyCorrectLights true
+                :antialias true
+                :gammaInput true
+                :gammaOutput true
+                :toneMapping three/ReinhardToneMapping
+                :toneMappingExposure (Math/pow 1.4 5.0))
+     (-> (get :domElement) (->> (.appendChild (.-body js/document)))))))
 
 (def scene
   (three/Scene.))
@@ -145,7 +145,6 @@
 
 (defn ^:async init []
   (js-await (load-texture "wisp.png"))
-  #_(prn @assets)
   (set-mesh
    (doto (three/Group.)
      (.add (three/Points. (let [geo (three/SphereGeometry. 11 64 64)]
