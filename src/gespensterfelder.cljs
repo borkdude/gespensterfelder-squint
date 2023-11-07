@@ -78,10 +78,10 @@
 (def current-frame (atom 0))
 
 (def bezier
-  (map (BezierEasing. 0.74 -0.01 0.21 0.99)
-       (range 0 1 (/ 1.0 76))))
+  (mapv (BezierEasing. 0.74 -0.01 0.21 0.99)
+        (range 0 1 (/ 1.0 76))))
 
-(def linear (concat (easing 76 "linear" {:endToEnd true})))
+(def linear (easing 76 "linear" {:endToEnd true}))
 
 ;; used to calculate offsets for deformed sphere
 (def sphere-vertices
@@ -123,7 +123,7 @@
   (.render composer (nth bezier @current-frame))) ;; render from the effects composer
 
 (defn animate []
-  (.requestAnimationFrame js/window animate)
+  #_(.requestAnimationFrame js/window animate)
   (render))
 
 ;; where we store any assets loaded with e.g. load-texture
@@ -148,13 +148,16 @@
    (doto (three/Group.)
      (.add (three/Points. (let [geo (three/SphereGeometry. 11 64 64)]
                             (assoc! geo :colors (repeatedly (count (.-vertices geo)) #(three/Color. 0xffffff))))
-                          (three/PointsMaterial. {:vertexColors three/VertexColors
-                                                  :size 0.7
-                                                  :transparent true
-                                                  :alphaTest 0.5
-                                                  :map (doto (get @assets "wisp.png")
-                                                         js/console.log)
-                                                  :blending three/AdditiveBlending})))))
+                          (three/PointsMaterial. {
+                                                  ;; :vertexColors three/VertexColors
+                                                  ;; :size 0.7
+                                                  ;; :transparent true
+                                                  ;; :alphaTest 0.5
+                                                  ;; :map (doto (get @assets "wisp.png")
+                                                  ;;        js/console.log)
+                                                  ;; :blending three/AdditiveBlending
+                                                  }
+                                                 )))))
   (animate))
 
 (init)
