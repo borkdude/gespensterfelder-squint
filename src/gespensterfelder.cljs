@@ -147,12 +147,13 @@
   (set-mesh
    (doto (three/Group.)
      (.add (three/Points. (let [geo (three/SphereGeometry. 11 64 64)]
-                            (assoc! geo :colors (clj->js (repeatedly (count (.-vertices geo)) #(three/Color. 0xffffff)))))
+                            (assoc! geo :colors (repeatedly (count (.-vertices geo)) #(three/Color. 0xffffff))))
                           (three/PointsMaterial. {:vertexColors three/VertexColors
                                                   :size 0.7
                                                   :transparent true
                                                   :alphaTest 0.5
-                                                  :map (get @assets "wisp.png")
+                                                  :map (doto (get @assets "wisp.png")
+                                                         js/console.log)
                                                   :blending three/AdditiveBlending})))))
   (animate))
 
