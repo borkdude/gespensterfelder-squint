@@ -15,8 +15,6 @@
    :sin-x-scale 0.0
    :cos-y-scale 1.0})
 
-(js/console.log params)
-
 (def gui
   (doto (dat/GUI.)
     (.add params "magnitude" 0.0 0.5)
@@ -29,7 +27,7 @@
 ;; basic three.js setup
 
 (def renderer
-  (doto (three/WebGLRenderer. (clj->js :antialias true))
+  (doto (three/WebGLRenderer. (clj->js {:antialias true}))
     (.setPixelRatio (.-devicePixelRatio js/window))
     (.setSize (.-innerWidth js/window) (.-innerHeight js/window))
     #_:clj-kondo/ignore
@@ -92,10 +90,7 @@
 (def origin (three/Vector3. 0 0 0))
 
 (defn fix-zero [n]
-  (if (= 0 n) 1 n))
-
-(defn mod [x y]
-  (js* "(~{} % ~{} + ~{}) % ~{}" x y y y))
+  (if (zero? n) 1 n))
 
 (defn render []
   (let [fps 24.0
