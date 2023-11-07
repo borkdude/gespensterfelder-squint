@@ -5,6 +5,8 @@
             ["dat.gui" :as dat]
             ["squint-cljs/core.js" :as squint]))
 
+#_(warn-on-lazy-reusage!)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; controls
 
@@ -123,7 +125,7 @@
   (.render composer (nth bezier @current-frame))) ;; render from the effects composer
 
 (defn animate []
-  #_(.requestAnimationFrame js/window animate)
+  (.requestAnimationFrame js/window animate)
   (render))
 
 ;; where we store any assets loaded with e.g. load-texture
@@ -147,15 +149,15 @@
   (set-mesh
    (doto (three/Group.)
      (.add (three/Points. (let [geo (three/SphereGeometry. 11 64 64)]
-                            (assoc! geo :colors (repeatedly (count (.-vertices geo)) #(three/Color. 0xffffff))))
+                            (assoc! geo :colors (vec (repeatedly (count (.-vertices geo)) #(three/Color. 0xffffff)))))
                           (three/PointsMaterial. {
-                                                  ;; :vertexColors three/VertexColors
-                                                  ;; :size 0.7
-                                                  ;; :transparent true
-                                                  ;; :alphaTest 0.5
-                                                  ;; :map (doto (get @assets "wisp.png")
-                                                  ;;        js/console.log)
-                                                  ;; :blending three/AdditiveBlending
+                                                  :vertexColors three/VertexColors
+                                                  :size 0.7
+                                                  :transparent true
+                                                  :alphaTest 0.5
+                                                  :map (doto (get @assets "wisp.png")
+                                                          js/console.log)
+                                                  :blending three/AdditiveBlending
                                                   }
                                                  )))))
   (animate))
