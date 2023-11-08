@@ -4,7 +4,8 @@
             ["three-full" :as three]
             ["easing" :as easing]
             ["bezier-easing" :as BezierEasing]
-            ["dat.gui" :as dat]))
+            ["dat.gui" :as dat]
+            ["stats.js" :as Stats]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; controls
@@ -24,13 +25,16 @@
     (.add params "sin-x-scale" 0.0 2.0)
     (.add params "cos-y-scale" 0.0 2.0)))
 
+(def width nil #_3000)
+(def height nil #_2000)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; basic three.js setup
 
 (defonce renderer
-  (doto (three/WebGLRenderer. (clj->js :antialias true))
+  (doto (three/WebGLRenderer. {:antialias true})
     (.setPixelRatio (.-devicePixelRatio js/window))
-    (.setSize (.-innerWidth js/window) (.-innerHeight js/window))
+    (.setSize (or width (.-innerWidth js/window)) (or height (.-innerHeight js/window)))
     (j/assoc! :physicallyCorrectLights true
               :antialias true
               :gammaInput true
@@ -43,12 +47,12 @@
   (three/Scene.))
 
 (def camera
-  (doto (three/PerspectiveCamera. 75 (/ (.-innerWidth js/window) (.-innerHeight js/window)) 0.1 1000)
+  (doto (three/PerspectiveCamera. 75 (/ (or width (.-innerWidth js/window)) (or height (.-innerHeight js/window))) 0.1 1000)
     (j/update! :position j/call :set 0 0 70)
     (.lookAt (three/Vector3.))))
 
 ;; effects composer for after effects
-(def composer 
+(def composer
   (let [w (j/get js/window :innerWidth)
         h (j/get js/window :innerHeight)]
     (doto (three/EffectComposer. renderer)
@@ -77,8 +81,8 @@
 (def current-frame (atom 0))
 
 (def bezier
-  (map (BezierEasing. 0.74 -0.01 0.21 0.99)
-       (range 0 1 (/ 1.0 76))))
+  (mapv (BezierEasing. 0.74 -0.01 0.21 0.99)
+        (range 0 1 (/ 1.0 76))))
 
 (def linear (concat (easing 76 "linear" (j/obj :endToEnd true))))
 
@@ -121,9 +125,11 @@
         (j/assoc-in! m [:geometry :colorsNeedUpdate] true))))
   (.render composer (nth bezier @current-frame))) ;; render from the effects composer
 
-(defn animate []
-  (.requestAnimationFrame js/window animate)
-  (render))
+(defn animate [s]
+  (.begin s)
+  (render)
+  (.end s)
+  (.requestAnimationFrame js/window #(animate s)))
 
 ;; where we store any assets loaded with e.g. load-texture
 (defonce assets (atom {}))
@@ -141,7 +147,7 @@
 
 (defn init []
   (p/do
-    (load-texture "wisp.png")    
+    (load-texture "wisp.png")
     (set-mesh
      (doto (three/Group.)
        (.add (three/Points. (let [geo (three/SphereGeometry. 11 64 64)]
@@ -150,6 +156,9 @@
                                                           :size 0.7
                                                           :transparent true
                                                           :alphaTest 0.5
-                                                          :map (@assets "wisp.png")
+                                                          :map (doto (@assets "wisp.png")
+                                                                 js/console.log)
                                                           :blending three/AdditiveBlending)))))))
-  (animate))
+  (let [s (Stats. [])]
+    (js/document.body.appendChild (.-dom s))
+    (animate s)))

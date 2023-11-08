@@ -11,6 +11,7 @@
     "dat.gui": "^0.7.5",
     "easing": "^1.2.1",
     "postprocessing": "^5.6.0",
+    "stats.js": "^0.17.0",
     "three-full": "^17.1.0"
   }
 }
